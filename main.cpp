@@ -1,387 +1,370 @@
-#include <SFML/Graphics.hpp>
+
 #include <iostream>
 #include <cstdlib>
 #include <time.h>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <random>
 
-
-class Carte{
-
+class Card
+{
 private:
-    int valoare;
-    std::string culoare;
-    std::string simbol;
+
+    int value;
+    std::string color;
+    std::string symbol;
+
 public:
 
-    Carte()
+    Card()
     {
-        valoare = rand()%13+1;
+        value = 0;
+        color = "pink";
+        symbol = "square";
+    }
 
-        int nr_culoare = rand()%2;
-        if(nr_culoare == 0) culoare = "rosu";
-        else culoare = "negru";
+    Card(int _value, std::string _color, std::string _symbol)
+    {
+        value = _value;
+        color = _color;
+        symbol = _symbol;
+    }
 
-        if(nr_culoare == 0)
+    friend std::ostream& operator<<(std::ostream& os, const Card& c)
+    {
+        os<<c.value<<" "<<c.symbol<<" "<<c.color<<"\n";
+        return os;
+    }
+    friend std::istream& operator>>(std::istream& in, Card& c)
+    {
+        in>>c.value;
+        in>>c.symbol;
+        in>>c.color;
+        return in;
+    }
+
+    int get_value()
+    {
+        return value;
+    }
+    std::string get_color()
+    {
+        return color;
+    }
+    std::string get_symbol()
+    {
+        return symbol;
+    }
+
+
+};
+
+class Pack
+{
+
+private:
+
+    int number_of_cards;
+    std::vector <Card> cards;
+
+public:
+
+    Pack ()
+    {
+        number_of_cards = 0;
+    }
+
+    void shuffle()
+    {
+        auto rng = std::default_random_engine {};
+        std::shuffle(std::begin(cards), std::end(cards), rng);
+    }
+
+    void add_card( Card c)
+    {
+        number_of_cards++;
+        cards.push_back(c);
+    }
+
+    Card get_first_card ()
+    {
+        Card c;
+        c = cards[0];
+        cards.erase(cards.begin());
+        return c;
+    }
+
+    void add_top_card(Card c)
+    {
+        number_of_cards++;
+        cards.push_back(c);
+        std::rotate(cards.rbegin(), cards.rbegin() + 1, cards.rend());
+    }
+};
+
+class Player
+{
+private:
+    int number_of_cards = 0;
+    std::vector <Card> players_cards;
+
+    void draw_a_card(Card c)
+    {
+        players_cards.push_back(c);
+        number_of_cards++;
+    }
+
+
+    void discard_a_card(Card c)
+    {
+        for(int i=0; i<number_of_cards; i++)
         {
-            int nr_simbol = rand()%2;
-            if(nr_simbol == 0) simbol = "romb" ;
-            else simbol = "inima";
+            if(c.get_value() == players_cards[i].get_value()
+               && c.get_color() == players_cards[i].get_color()
+               && c.get_symbol() == players_cards[i].get_symbol())
+            {
+                players_cards.erase(players_cards.begin()+i);
+                number_of_cards--;
+                break;
+            }
+        }
+    }
+
+    Card pick_a_card()
+    {
+        Card c;
+        std::cin>>c;
+        return c;
+    }
+
+public:
+
+    friend std::ostream& operator<<(std::ostream& os, const Player& p)
+    {
+        for(int i=0; i<p.number_of_cards; i++)
+        {
+            os<<p.players_cards[i];
+        }
+        return os;
+    }
+
+    void your_turn(Card c, Card c2, bool & dr, Card & returned_card)
+    {
+        std::cout<<"Carte de jos: ";
+        std::cout<<c<<"\n";
+
+        std::cout<<"Cartile tale:\n";
+
+        for(int i=0; i<number_of_cards; i++)
+        {
+            std::cout<<players_cards[i];
+        }
+
+        std::cout<<"\n\nAlege 1 pentru a pune o carte jos\nAlege 2 pentru a trage o carte\n\n";
+
+        int optiune;
+        std::cin>>optiune;
+
+        if(optiune == 1)
+        {
+            Card cc = pick_a_card();
+            discard_a_card(cc);
+            returned_card = cc;
         }
         else
         {
-            int nr_simbol = rand()%2;
-            if(nr_simbol == 0) simbol = "trefla" ;
-            else simbol = "inima";
+            draw_a_card(c2);
+            dr = true;
         }
 
-    }
-    Carte(int val, std::string cul, std::string sim)
-    {
-        valoare = val;
-        culoare = cul;
-        simbol = sim;
-    }
-    int CarteSpeciala()
-    {
-        //if(valoare == 1) return 1;
-        //if(valoare == 7) return 7;
-        //if(valoare == 11) return 11;
-        return 0;
-    }
-    friend std::ostream& operator<<(std::ostream& os, const Carte& ct)          //supraincarcare operator<<
-    {
-        os<<ct.valoare<<" "<<ct.simbol<<" "<<ct.culoare<<"\n";
-        return os;
-    }
-    //supraincarcare operator >> (as avea nevoie)
-    int GetValoare()
-    {
-        return valoare;
-    }
-    std::string GetSimbol()
-    {
-        return simbol;
-    }       //getter
-    std::string GetCuloare()
-    {
-        return culoare;
-    }       //getter
 
-    ~Carte(){}
-};
+    }
 
-class Jucator{
-private:
-    std::vector<Carte> mana;
-    int nr_carti=0;
-public:
-    void EliminareCarte( Carte c)
+    Card bot_turn(Card c1, Card c2, bool &dr, Card & returned_card)
     {
-        for (auto it = mana.begin(); it != mana.end(); ++it)
+        std::cout<<"Cartile bot:\n";
+
+        for(int i=0; i<number_of_cards; i++)
         {
-            if(it->GetValoare() == c.GetValoare() &&
-               it->GetCuloare() == c.GetCuloare() &&
-               it->GetSimbol() == c.GetSimbol())
+            std::cout<<players_cards[i];
+        }
+
+
+        for(int i=0; i<number_of_cards; i++)
+        {
+            if((c1.get_color() == players_cards[i].get_color() &&
+                c1.get_symbol() == players_cards[i].get_symbol())||
+               c1.get_value() == players_cards[i].get_value())
             {
-                mana.erase(it);
-                nr_carti--;
+                returned_card = players_cards[i];
+                discard_a_card(returned_card);
                 break;
+
             }
         }
+        draw_a_card(c2);
+        dr=true;
+
     }
 
-    void AfisareMana()                              //functia asta va fi stearsa probabil, am folosit-o pt debugging
+    void add_card(Card c)
     {
-        for (auto it = mana.begin(); it != mana.end(); ++it)
-        {
-            std::cout<<*it;
-        }
-        std::cout<<"\n";
-    }
-
-
-    void TragCarte(Carte c)
-    {
-        nr_carti++;
-        mana.push_back(c);
-    }
-
-    void PuneCarte(Carte c)
-    {
-        EliminareCarte(c);
-    }
-    int Getnr_carti()                   //getter
-    {
-        return nr_carti;
-    }
-
-    std::vector<Carte> Getmana()
-    {
-        return mana;
-    }
-
-    ~Jucator(){}
-};
-
-class Pachet{
-private:
-    std::vector<Carte> pachet;
-    int nr_carti = 0;
-public:
-    Pachet ()                                       //constructor
-    {
-        std::vector<Carte> _pachet;
-        pachet = _pachet;
-        int _nr_carti = 0;
-        nr_carti = _nr_carti;
-    }
-    Pachet& operator=(const Pachet& other){             //operator de mutare
-        pachet = std::move(other.pachet);
-        nr_carti = std::move(other.nr_carti);
-        return *this;
-    }
-    void EliminareCarte(Carte c)
-    {
-        for (auto it = pachet.begin(); it != pachet.end(); ++it)
-        {
-            if(it->GetValoare() == c.GetValoare() &&
-               it->GetCuloare() == c.GetCuloare() &&
-               it->GetSimbol() == c.GetSimbol())
-            {
-                pachet.erase(it);
-                nr_carti--;
-                break;
-            }
-        }
-    }
-    void AdaugareCarte(Carte c)
-    {
-        pachet.push_back(c);
-        nr_carti++;
-    }
-    void AmestecarePachet()
-    {
-        std::random_shuffle(pachet.begin(),pachet.end());
-    }
-    void AfisarePachet()
-    {
-        for (auto it = pachet.begin(); it != pachet.end(); ++it)
-        {
-            std::cout<<*it;
-        }
-        std::cout<<"\n";
-    }
-    int GetNr()
-    {
-        return nr_carti;
-    }
-    Carte TragCarte()
-    {
-        nr_carti--;
-        Carte c = pachet[nr_carti];
-        pachet.pop_back();
-        return c;
-    }
-    Carte UltimaCarte ()
-    {
-        return *pachet.end();
+        number_of_cards++;
+        players_cards.push_back(c);
     }
 
 
-    ~Pachet(){}
+    int get_number_of_cards()
+    {
+        return number_of_cards;
+    }
 };
 
 
-class Joc{
+class Game
+{
 private:
-    int nr_jucatori;
-    int jucator_prezent = 0;        //"a cui este randul"
-    Pachet p;                       //pachetul din care se trag carti
-    Pachet pjos;                    //pachetul de jos unde se pun carti
-    std::vector<Jucator> jucatori;          //vetorul de jucatori
-    bool conditie_speciala = false;
-    bool joc_activ = true;
 
-    void random_generator()
-    {
-        srand(time(0));
-    }
-    void creare_jucatori()                      //nr jucatorilor variaza intre 2 si 4
-    {
-        int _nr_jucatori = rand() %3 +2;
-        nr_jucatori = _nr_jucatori;
-        std::cout<<_nr_jucatori<<"\n";
-    }
-    void ConstruirePachet(Pachet &pr)
-    {
-        for(int i = 1; i<=13; i++)
-        {
-            Carte carte1( i , "rosu" , "romb");
-            Carte carte2( i , "rosu" , "inima");
-            Carte carte3( i , "negru" , "inima");
-            Carte carte4( i , "nergu" , "trefla");
-            pr.AdaugareCarte(carte1);
-            pr.AdaugareCarte(carte2);
-            pr.AdaugareCarte(carte3);
-            pr.AdaugareCarte(carte4);
-        }
-    }
-    void creare_pachet()                    //aici se creaza un pachet cu toate cartile, iar apoi se muta cu operator=
-    {
-        Pachet _p;
-        ConstruirePachet(_p);
-        _p.AmestecarePachet();
-        _p.AfisarePachet();
-        p = _p;                         // constructor de copiere cu operator=
-    }
-    void impartire_carti()                  //functia imparte cate 5 carti la fiecare jucator
-    {
-        for(int i=0; i<nr_jucatori; i++)
-        {
-            Jucator juc;
+    int number_of_players = 0;
+    std::vector <Player> players;
+    Pack draw_pack;
+    Pack bottom_pack;
 
-            for(int j=0; j<5; j++)
+
+    void distribution()
+    {
+        for(int i=1; i<=5; i++)
+        {
+            for(int j=0; j<number_of_players; j++)
             {
-                juc.TragCarte(p.TragCarte());
+                players[j].add_card(draw_pack.get_first_card());
             }
-            jucatori.push_back(juc);
+        }
+
+        bottom_pack.add_card(draw_pack.get_first_card());
+
+        for(int i=0; i<=3; i++)
+        {
+            std::cout<<players[i]<<"\n";
+
         }
     }
-    void creare_pachet_jos()            //metoda apelata o singura data la incepera jocului
+
+    void create_draw_pack()
     {
-        pjos.AdaugareCarte(p.TragCarte());
-    }
-    bool verificare( Carte c)           //verific daca poate fi pusa jos cartea c
-    {
-        if((c.GetCuloare()==pjos.UltimaCarte().GetCuloare()
-        && c.GetSimbol()==pjos.UltimaCarte().GetSimbol())
-        || c.GetValoare()==pjos.UltimaCarte().GetValoare())
+        for(int i=1; i<=13; i++)
         {
-            return true;
+            Card card1(i, "rosie" , "romb");
+            Card card2(i, "rosie" , "inima");
+            Card card3(i, "neagra" , "trefla");
+            Card card4(i, "neagra" , "inima");
+            draw_pack.add_card(card1);
+            draw_pack.add_card(card2);
+            draw_pack.add_card(card3);
+            draw_pack.add_card(card4);
+
         }
-        return false;
     }
-    void joc_efectiv()
+
+    void create_players()
     {
-        while(joc_activ)
+        Player player1;
+        Player player2;
+        Player player3;
+        Player player4;
+
+        players.push_back(player1);
+        players.push_back(player2);
+        players.push_back(player3);
+        players.push_back(player4);
+
+        number_of_players = 4;
+    }
+
+    void preparation()
+    {
+        create_draw_pack();
+        draw_pack.shuffle();
+        create_players();
+    }
+
+    bool playing()
+    {
+        for(int i=0; i<number_of_players; i++)
         {
-            if(jucator_prezent==nr_jucatori || jucator_prezent==0)
+            if(players[i].get_number_of_cards() == 0) return false;
+        }
+        return true;
+    }
+
+    void game_loop()
+    {
+        int turn = 0;
+        while(playing())
+        {
+            if(turn==0 || turn==number_of_players)
             {
-                std::cout<<"Cartile tale: \n";
-                jucatori[0].AfisareMana();
-                std::cout<<"Cartea de jos este: "<<pjos.UltimaCarte();
-                std::cout<<"Ce carte dai jos? \n";
-                int optiune;
-                std::cin>>optiune;                                  // ?????????????
-                std::cout<<"ok";
-                /*
-                 *
-                 *
-                 *
-                 *
-                 *
-                 */
-                if(jucatori[0].Getnr_carti()==0)
+                Card possibly_drew_card = draw_pack.get_first_card();
+                Card bottom_card = bottom_pack.get_first_card();
+                Card returned_card;
+                bool dr = true;
+
+                players[0].your_turn(bottom_card, possibly_drew_card, dr, returned_card);
+
+
+                if(dr == false)
                 {
-                    joc_activ = false;
+                    draw_pack.add_top_card(possibly_drew_card);
+                    bottom_pack.add_card(returned_card);
                 }
+                else
+                {
+                    bottom_pack.add_top_card(bottom_card);
 
-                jucator_prezent = 1;
+                }
+                turn = 1;
             }
             else
             {
-                if(!conditie_speciala)                      //aici botul contra care joci alege prima carte pe care o poate pune jos, si apoi o pune
+                Card possibly_drew_card = draw_pack.get_first_card();
+                Card bottom_card = bottom_pack.get_first_card();
+                Card returned_card;
+                bool dr = true;
+
+                players[turn].bot_turn(bottom_card, possibly_drew_card, dr, returned_card);
+                if(dr == false)
                 {
-                    bool dat_jos=false;
-                    for (auto it = jucatori[jucator_prezent].Getmana().begin(); it != jucatori[jucator_prezent].Getmana().end(); ++it)
-                    {
-                        if(verificare(*it))
-                        {
-                            jucatori[jucator_prezent].EliminareCarte(*it);
-                            pjos.AdaugareCarte(*it);
-                            dat_jos=true;
-                            int val_carte = it->CarteSpeciala();
-                            if(val_carte!=0) conditie_speciala =true;           //aici verific daca (,) carte este 1, 7 sau 11
-                            else conditie_speciala = false;
-                            break;
-                        }
-                    }
-                    if(dat_jos == false)                        //daca jucatorul nu are ce sa dea jos, va trage o carte
-                    {
-                        jucatori[jucator_prezent].TragCarte(p.TragCarte());
-                    }
+                    std::cout<<"Bot-ul a pus cartea: "<<returned_card;
+                    draw_pack.add_top_card(possibly_drew_card);
+                    bottom_pack.add_card(returned_card);
                 }
-                /*
-                 * partea de implementare cand exista o conditie speciala inca nu este implementata
-                 *
-                 *
-                 *
                 else
                 {
-                    int val_carte = pjos.UltimaCarte().CarteSpeciala();
-                    switch (val_carte) {
-                        case 1:
-                            jucator_prezent++;
-                            break;
-                        case 7:
+                    std::cout<<"Bot-ul a tras o carte\n";
+                    bottom_pack.add_top_card(bottom_card);
+                }
+                turn++;
 
 
-                    }
-                    bool dat_jos=false;
-                    for (auto it = jucatori[jucator_prezent].mana.begin(); it != jucatori[jucator_prezent].mana.end(); ++it)
-                    {
-                        if(verificare(*it))
-                        {
-                            jucatori[jucator_prezent].EliminareCarte(*it);
-                            pjos.AdaugareCarte(*it);
-                            dat_jos=true;
-                            break;
-                        }
-                    }
-                    if(dat_jos== false)
-                    {
-                        jucatori[jucator_prezent].TragCarte(p.TragCarte());
-                    }
-                }
-                */
-                jucator_prezent ++;
-                if(jucatori[jucator_prezent].Getnr_carti()==0)
-                {
-                    joc_activ = false;
-                }
-            }
-            if(p.GetNr()==0)                                        //aici verific daca pachetul din care se trag carti
-            {                                                       //mai are carti, in caz negativ , se pastreaza doar
-                Carte ult = pjos.UltimaCarte();                     //ultima carte din pachetul de jos , restul se
-                p = pjos;                                           //muta cu operatorul= in pachetul din care se trag
-                p.AmestecarePachet();                               //carti , iar apoi se amesteca
-                pjos.AdaugareCarte(ult);
-                p.EliminareCarte(ult);
             }
         }
-
     }
+
 public:
 
-    void Start()
+    void start()
     {
-        random_generator();
-        creare_jucatori();
-        creare_pachet();
-        impartire_carti();
-        creare_pachet_jos();
-        joc_efectiv();
+        preparation();
+        distribution();
+        game_loop();
     }
-
 };
-
-
 
 int main()
 {
-    Joc joc_nou;
-    joc_nou.Start();
-    std::cout<<"Joc terminat";
-
+    Game new_game;
+    new_game.start();
+    std::cout<<"End Game";
+    return 0;
 }
