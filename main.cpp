@@ -301,7 +301,7 @@ private:
     void game_loop()
     {
         int turn = 0;
-        while(playing())
+        while(playing() )
         {
             if(turn==0 || turn==number_of_players)
             {
